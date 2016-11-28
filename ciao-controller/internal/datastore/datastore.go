@@ -1809,17 +1809,18 @@ func (ds *Datastore) isDuplicateIP(new net.IP) bool {
 // AddPool will add a brand new pool to our datastore.
 func (ds *Datastore) AddPool(pool types.Pool) error {
 	ds.poolsLock.Lock()
-	defer ds.poolsLock.Unlock()
 
 	if len(pool.Subnets) > 0 {
 		// check each one to make sure it's not in use.
 		for _, subnet := range pool.Subnets {
 			_, newSubnet, err := net.ParseCIDR(subnet.CIDR)
 			if err != nil {
+				ds.poolsLock.Unlock()
 				return err
 			}
 
 			if ds.isDuplicateSubnet(newSubnet) {
+				ds.poolsLock.Unlock()
 				return types.ErrDuplicateSubnet
 			}
 
@@ -1833,10 +1834,12 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 		for _, newIP := range pool.IPs {
 			IP := net.ParseIP(newIP.Address)
 			if IP == nil {
+				ds.poolsLock.Unlock()
 				return types.ErrInvalidIP
 			}
 
 			if ds.isDuplicateIP(IP) {
+				ds.poolsLock.Unlock()
 				return types.ErrDuplicateIP
 			}
 
@@ -1851,8 +1854,11 @@ func (ds *Datastore) AddPool(pool types.Pool) error {
 
 	ds.pools[pool.ID] = pool
 	err := ds.db.createPool(pool)
+
+	ds.poolsLock.Unlock()
+
 	if err != nil {
-		ds.poolsLock.Unlock()
+		// lock must not be held when calling.
 		ds.DeletePool(pool.ID)
 	}
 
