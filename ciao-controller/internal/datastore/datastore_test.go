@@ -2769,6 +2769,8 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	ds.GenerateCNCIWorkload(4, 128, 128, "", "")
+
 	code := m.Run()
 
 	ds.Exit()
