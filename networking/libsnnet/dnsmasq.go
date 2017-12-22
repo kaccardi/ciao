@@ -66,6 +66,7 @@ type Dnsmasq struct {
 	pidFile   string
 	leaseFile string
 	hostsFile string
+	servers   []string
 }
 
 // NewDnsmasq initializes a new dnsmasq instance and attaches it to the specified bridge
@@ -350,8 +351,8 @@ func (d *Dnsmasq) createConfigFile() error {
 	params = append(params, fmt.Sprintf("dhcp-hostsfile=%s\n", d.hostsFile))
 	//params = append(params, "strict-order\n")
 	//params = append(params, "expand-hosts\n")
-	if d.DomainName != "" {
-		params = append(params, "domain=%s\n", d.DomainName)
+	if d.DomainName == "" {
+		params = append(params, fmt.Sprintf("domain=%s.net\n", d.TenantID))
 	}
 	params = append(params, "domain-needed\n")
 	params = append(params, "bogus-priv\n")
@@ -365,6 +366,10 @@ func (d *Dnsmasq) createConfigFile() error {
 	params = append(params, fmt.Sprintf("dhcp-lease-max=%d\n", d.dhcpSize))
 	params = append(params, fmt.Sprintf("dhcp-option-force=26,%d\n", d.MTU))
 	//params = append(params, "log-dhcp\n")
+
+	for _, s := range d.servers {
+		params = append(params, fmt.Sprintf("server=%s\n", s))
+	}
 
 	file, err := os.Create(d.confFile)
 	if err != nil {
@@ -412,4 +417,8 @@ func (d *Dnsmasq) setMTU() error {
 	// TODO: Setup MTU based on tunnel type
 	d.MTU = 1400
 	return nil
+}
+
+func (d *Dnsmasq) setServer(server string) {
+	d.servers = append(d.servers, server)
 }

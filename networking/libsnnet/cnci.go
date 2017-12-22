@@ -670,6 +670,21 @@ func (cnci *Cnci) UpdateNeighbors(neighbors []Neighbor) error {
 		updated = append(updated, neigh)
 	}
 
+	// set dnsmasq to forward requests to other cncis
+	for _, b := range cnci.topology.bridgeMap {
+		if b.Dnsmasq != nil {
+			glog.Infof("Updating dnsmasq")
+			for _, s := range updated {
+				glog.Infof("setting server %s", s.IP.String())
+				b.Dnsmasq.setServer(s.IP.String())
+			}
+			err = b.Dnsmasq.restart()
+			if err != nil {
+				glog.Warningf("Unable to restart dnsmasq (%v)\n", err)
+			}
+		}
+	}
+
 	// clean up any routes neighbors that need removing.
 	return cnci.confirmRoutes(tun, updated, neighs)
 }
